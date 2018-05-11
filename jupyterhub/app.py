@@ -22,6 +22,9 @@ if sys.version_info[:2] < (3, 3):
 
 from jinja2 import Environment, FileSystemLoader, PrefixLoader, ChoiceLoader
 
+#1626 issue fix
+from sqlalchemy.exc import SQLAlchemyError
+
 from sqlalchemy.exc import OperationalError
 
 from tornado.httpclient import AsyncHTTPClient
@@ -1589,8 +1592,12 @@ class JupyterHub(Application):
                 active_users_count += 1
         self.statsd.gauge('users.running', users_count)
         self.statsd.gauge('users.active', active_users_count)
+        #1626 issue fix
+        try:
+            self.db.commit()
+        except SQLAlchemyError:
+            self.db.rollback()
 
-        self.db.commit()
         yield self.proxy.check_routes(self.users, self._service_map, routes)
 
     @gen.coroutine
